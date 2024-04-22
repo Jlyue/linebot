@@ -26,7 +26,7 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-openai_api_key = os.getenv('sk-proj-cqvgJtWOFqS7iyduCW3HT3BlbkFJ8i3iAUiQAc2vKBnKjcEL')
+openai_api_key = os.getenv('openai_api_key')
 
 # get channel_secret and channel_access_token
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
