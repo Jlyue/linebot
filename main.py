@@ -1,7 +1,3 @@
-import errno
-import os
-import sys
-import openai
 from flask import Flask, request, abort
 from linebot.v3 import (
     WebhookHandler
@@ -9,49 +5,34 @@ from linebot.v3 import (
 from linebot.v3.exceptions import (
     InvalidSignatureError
 )
-from linebot.v3.webhooks import (
-    MessageEvent,
-)
 from linebot.v3.messaging import (
     Configuration,
     ApiClient,
     MessagingApi,
-    MessagingApiBlob,
     ReplyMessageRequest,
-    AudioMessage,
-    TextMessage
+    TextMessage,
+    MessagingApiBlob,
+    AudioMessage
 )
-from io import BytesIO
+from linebot.v3.webhooks import (
+    MessageEvent,
+    TextMessageContent
+)
+
+import os
 from openai import OpenAI
+OPENAI_API_KEY = os.getenv('openai_api_key')
+CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET')
+CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+# if channel_secret is None or channel_access_token is None:
+#     print('Specify LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN as environment variables.')
+#     sys.exit(1)
+# TODO Use raise error.
 
 app = Flask(__name__)
 
-openai_api_key = os.getenv('openai_api_key')
-
-# get channel_secret and channel_access_token
-channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
-channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
-if channel_secret is None or channel_access_token is None:
-    print('Specify LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN as environment variables.')
-    sys.exit(1)
-
-handler = WebhookHandler(channel_secret)
-
-static_tmp_path = os.path.join(os.path.dirname(__file__), 'static', 'tmp')
-
-configuration = Configuration(
-    access_token=channel_access_token
-)
-
-# create tmp dir for download content
-def make_static_tmp_dir():
-    try:
-        os.makedirs(static_tmp_path)
-    except OSError as exc:
-        if exc.errno == errno.EEXIST and os.path.isdir(static_tmp_path):
-            pass
-        else:
-            raise
+configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
+handler = WebhookHandler(CHANNEL_SECRET)
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -66,10 +47,13 @@ def callback():
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
+        app.logger.info("Invalid signature. Please check your channel access token/channel secret.")
         abort(400)
 
     return 'OK'
 
+
+# TODO import whisper API module, don't import whisper in this script, make it a module.
 # handle received audio messages
 @handler.add(MessageEvent, message=AudioMessage)
 def handle_message(event):
